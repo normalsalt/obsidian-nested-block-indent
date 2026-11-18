@@ -1,0 +1,44 @@
+{
+	"permissions": {
+		"allow": [
+			"Bash(npm run lint)",
+			"Bash(npm run lint -- --fix)",
+			"Bash(npx eslint . --fix)",
+			"Bash(npm run build)",
+			"Bash(obsidian dev:debug on)",
+			"Bash(obsidian plugin:reload id=nested-block-indent)",
+			"Bash(obsidian dev:errors)",
+			"Bash(obsidian dev:errors clear)",
+			"Bash(obsidian dev:console clear)",
+			"Bash(obsidian dev:console level=error)",
+			"Bash(gh release view *)",
+			"Bash(gh release list)",
+			"Bash(gh release list *)",
+			"Bash(gh run list *)",
+			"Bash(gh run watch *)"
+		],
+		"ask": [
+			"Bash(git commit *)",
+			"Bash(git push)",
+			"Bash(git push origin *)",
+			"Bash(npm version patch)",
+			"Bash(npm version minor)",
+			"Bash(npm version major)",
+			"Bash(gh release edit * --draft=false)"
+		],
+		"deny": [
+			"Bash(git push --force*)",
+			"Bash(git push -f*)",
+			"Bash(git push * --force*)",
+			"Bash(git push * -f*)",
+			"Bash(git tag *)",
+			"Bash(git reset --hard *)",
+			"Bash(npm audit fix *)",
+			"Bash(gh release create *)",
+			"Bash(gh release delete *)",
+			"Bash(gh release delete-asset *)",
+			"Bash(gh release upload *)",
+			"Bash(gh release download *)"
+		]
+	}
+}
