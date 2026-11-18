@@ -59,6 +59,18 @@ function isLivePreview(state: EditorState): boolean {
 	return state.field(editorLivePreviewField, false) ?? false;
 }
 
+/** pos の文字を囲む要素の、行の要素までの右の余白（margin-inline-end）の合計 */
+function marginAfter(view: EditorView, pos: number, lineEl: HTMLElement): number {
+	const { node } = view.domAtPos(pos);
+	let el = node.instanceOf(HTMLElement) ? node : node.parentElement;
+	let margin = 0;
+	while (el && el !== lineEl) {
+		margin += parseFloat(getComputedStyle(el).marginInlineEnd) || 0;
+		el = el.parentElement;
+	}
+	return margin;
+}
+
 class NestedBlockIndentView {
 	decorations: DecorationSet = Decoration.none;
 	/** カーソルが中に入らないようにする範囲（隠した行頭の空白） */
@@ -140,10 +152,10 @@ class NestedBlockIndentView {
 			decos.push(
 				Decoration.line({ class: cls, attributes: { style: `--nbi-indent: ${layout.x}px` } }).range(line.from),
 			);
-			// 空白を隠した行と、`- ```js` の行（Obsidian の縦線がコードの小さい文字に合わせてずれる）には、
-			// インデントの縦線を行頭に置く。閉じるフェンスの行は Obsidian が中身ごと置き換えるので、
-			// 隠す範囲とは別の、行頭の位置に置く
-			if (layout.guides.length && (t.hide > 0 || t.kind === 'code-item')) {
+			// 空白を隠した行、コードブロックの行（空の行には Obsidian の縦線がない）、`- ```js` の行
+			// （Obsidian の縦線がコードの小さい文字に合わせてずれる）には、インデントの縦線を行頭に置く。
+			// 閉じるフェンスの行は Obsidian が中身ごと置き換えるので、隠す範囲とは別の、行頭の位置に置く
+			if (layout.guides.length && (t.hide > 0 || t.kind === 'code' || t.kind === 'code-item')) {
 				decos.push(Decoration.widget({ widget: new Guides(layout.guides), side: -1 }).range(line.from));
 			}
 			// `- ```js` の行は、記号の後ろのフェンスを背景の内側から始める
@@ -179,7 +191,7 @@ class NestedBlockIndentView {
 				const found = new Map<string, Layout>();
 				// Obsidian が付けた padding から取れた記号（座標から測った値より優先する）
 				const exact = new Set<string>();
-				const { doc, selection } = view.state;
+				const { doc } = view.state;
 				const { from, to } = view.viewport;
 				for (const item of this.result.items) {
 					if (exact.has(item.prefix) || item.line > doc.lines) continue;
@@ -203,13 +215,13 @@ class NestedBlockIndentView {
 						exact.add(item.prefix);
 						continue;
 					}
-					// padding がない行（`- ```js` など）は座標から測る
+					// padding がない行（`- ```js` など）は座標から測る。カーソルを置いて出る ``` や `>` は
+					// 前に余白を空けているので、記号の側（side: -1）の、記号の直後の位置を使う。
+					// 記号の要素の右の余白（`.cm-formatting-list` の margin-inline-end）は本文の前の空きなので足す
 					if (found.has(item.prefix)) continue;
-					// `>` を出している行は、`>` の前の余白の分だけ本文が右にずれるので測らない
-					if (item.quote && selection.ranges.some((r) => r.from <= line.to && r.to >= line.from)) continue;
-					const text = view.coordsAtPos(textPos, 1);
+					const text = view.coordsAtPos(textPos, -1);
 					if (!text) continue;
-					found.set(item.prefix, { x: text.left - left, guides });
+					found.set(item.prefix, { x: text.left - left + marginAfter(view, textPos - 1, lineEl), guides });
 				}
 				return found;
 			},

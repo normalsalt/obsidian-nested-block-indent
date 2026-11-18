@@ -87,6 +87,17 @@
 	content: none;
 }
 
+/* コードの中の字下げは、普通の空白の幅にする（Obsidian は箇条書きの中の行頭の空白を */
+/* インデントとして扱い、--list-indent の幅と縦線を付ける。親の分の空白は隠しているので、残るのはコードの字下げ） */
+.markdown-source-view.mod-cm6 .cm-line.nbi-code:not(.nbi-code-item) .cm-indent {
+	display: inline;
+	min-width: 0;
+}
+
+.markdown-source-view.mod-cm6 .cm-line.nbi-code:not(.nbi-code-item) .cm-indent::before {
+	content: none;
+}
+
 /* 引用: 左の縦線を親の本文に揃える */
 .markdown-source-view.mod-cm6 .cm-line.nbi-quote {
 	font-style: var(--blockquote-style);

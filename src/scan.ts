@@ -27,8 +27,6 @@ export interface Target {
 export interface Item {
 	line: number;
 	prefix: string;
-	/** 項目の行に直接書いた引用か（`>` を出すと本文の位置がずれるので、測るときに区別する） */
-	quote: boolean;
 }
 
 export interface ScanResult {
@@ -151,7 +149,7 @@ export function scan(lines: readonly string[], tabSize: number): ScanResult {
 			};
 			while (stack.length && (stack[stack.length - 1]?.indentCol ?? 0) >= item.indentCol) stack.pop();
 			stack.push(item);
-			items.push({ line, prefix, quote: text.slice(prefix.length).startsWith('>') });
+			items.push({ line, prefix });
 
 			const rest = text.slice(prefix.length);
 			const f = FENCE_RE.exec(rest)?.[1];
