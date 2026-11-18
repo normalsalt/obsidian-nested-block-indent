@@ -266,14 +266,17 @@ class NestedBlockIndentView {
 						const margin = parseFloat(getComputedStyle(el, '::before').marginInlineStart) || 0;
 						return Math.round((el.getBoundingClientRect().left - left + margin + 1) * 10) / 10;
 					});
-					// 項目の行では、Obsidian がぶら下げインデントの padding に本文の開始位置を入れている
+					// 項目の行では、Obsidian がぶら下げインデントの padding に本文の開始位置を入れている。
+					// ただし `- > ...` の行（カーソルを置いて出る `>` まで含めて測られる）と、本文がまだない行
+					// （記号の右の余白が含まれない）の padding は本文の開始位置と合わないので使わない
+					const rest = line.text.slice(item.prefix.length);
 					const padding = parseFloat(lineEl.style.paddingInlineStart);
-					if (!Number.isNaN(padding)) {
+					if (!Number.isNaN(padding) && rest !== '' && !rest.startsWith('>')) {
 						found.set(item.prefix, { x: padding, guides });
 						exact.add(item.prefix);
 						continue;
 					}
-					// padding がない行（`- ```js` など）は座標から測る。カーソルを置いて出る ``` や `>` は
+					// padding がない行（`- ```js` など）と、使えない行は座標から測る。カーソルを置いて出る ``` や `>` は
 					// 前に余白を空けているので、記号の側（side: -1）の、記号の直後の位置を使う。
 					// 記号の要素の右の余白（`.cm-formatting-list` の margin-inline-end）は本文の前の空きなので足す
 					if (found.has(item.prefix)) continue;

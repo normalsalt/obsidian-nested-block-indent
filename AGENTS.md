@@ -93,7 +93,7 @@ Live Preview で、箇条書きの中のコードブロックと引用を、親�
 - `- > ...` は引用として解析されない（`HyperMD-quote` が付かず、`>` がそのまま出る）。判定は自前で行う必要がある
 - ノート行の `> ...` は `HyperMD-quote HyperMD-quote-lazy` になる。縦線は行の左端に出て、親の項目と揃わない
 - ノート行の引用のすぐ次の項目の行（`- コードブロック` など）にも、遅延継続（lazy continuation）として `HyperMD-quote HyperMD-quote-lazy` が付き、縦線が伸びてしまう（表示の決め事で止める）
-- 本文の開始位置は、項目の行のインラインの `padding-inline-start` をそのまま使う。padding のない行（`- ```js`）だけ、行の要素の左端から本文の座標を測る。カーソルを置くと出る ``` や `>` の前には余白を空けているので、記号の側（`coordsAtPos(pos, -1)`）で測る。記号の要素（`.cm-formatting-list`）には右の余白（`margin-inline-end`、`-` で 4.8px）があり、Obsidian の padding はこれを含むので、測った値に足す。記号の種類（`\t- ` など）ごとに覚え、画面の外の親にも使う
+- 本文の開始位置は、項目の行のインラインの `padding-inline-start` をそのまま使う。ただし Obsidian はこの padding を行の中身から測るので、`- > ...` の行（カーソルを置いて出る `>` と、その前の余白まで含む）と、本文がまだない項目の行（記号の右の余白を含まない）では本文の開始位置と合わない。これらの行と、padding のない行（`- ```js`）は、行の要素の左端から本文の座標を測る。カーソルを置くと出る ``` や `>` の前には余白を空けているので、記号の側（`coordsAtPos(pos, -1)`）で測る。記号の要素（`.cm-formatting-list`）には右の余白（`margin-inline-end`、`-` で 4.8px）があり、Obsidian の padding はこれを含むので、測った値に足す。記号の種類（`\t- ` など）ごとに覚え、画面の外の親にも使う
 - Tab（Outliner の `indent-list` など）で項目を移すと、Obsidian は項目の行の padding を、途中の値（71px など）を経てから正しい値（100px など）に直す。行の高さは変わらず `geometryChanged` にならないので、測った値が変わったら落ち着くまで測り直す（カーソル移動でも測る）。Outliner のコマンドは `app.commands.executeCommandById('obsidian-outliner:indent-list')` で試せる
 - CodeMirror の測定は `requestAnimationFrame` で動くので、Obsidian のウィンドウが隠れている（`document.visibilityState` が `hidden`）と走らず、装飾が付かない。CLI で確かめるときはウィンドウを表示しておく
 - インデントの縦線は `.cm-indent::before`（`.cm-indent` の左端 + `margin-inline-start: var(--indentation-guide-editing-indent)` + 幅 1px の右の枠線）。この余白は `.85em` で文字の大きさに比例するので、文字の小さいコードの行ではずれる
