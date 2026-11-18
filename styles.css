@@ -105,24 +105,36 @@
 	background: none !important;
 }
 
+/* `>` は縦線の位置に置き、本文は縦線の右から始める。折り返した行も本文に揃える */
 .markdown-source-view.mod-cm6 .cm-line.nbi-quote:not(.nbi-quote-item) {
-	text-indent: 0 !important;
 	padding-inline-start: calc(var(--nbi-indent) + var(--size-4-3)) !important;
+	text-indent: calc(-1 * var(--size-4-3)) !important;
 }
 
-/* `- > ...` は、折り返した行も縦線の右から始める */
 .markdown-source-view.mod-cm6 .cm-line.nbi-quote-item {
 	padding-inline-start: calc(var(--nbi-indent) + var(--size-4-3)) !important;
 	text-indent: calc(-1 * (var(--nbi-indent) + var(--size-4-3))) !important;
 }
 
+/* 通常の引用と同じく、`>` は、カーソルの有無にかかわらず縦線と本文の間の幅を占める（続く空白の幅はなくす）。 */
+/* 色は通常の引用の `>`（.cm-formatting-quote）と同じにする（`- > ...` などは Obsidian が引用の記号として扱わない） */
 .markdown-source-view.mod-cm6 .nbi-quote-marker {
-	padding-inline-start: var(--size-4-3);
-}
-
-.markdown-source-view.mod-cm6 .nbi-quote-spacer {
 	display: inline-block;
 	width: var(--size-4-3);
+	text-indent: 0;
+	color: var(--text-faint);
+}
+
+.markdown-source-view.mod-cm6 .nbi-quote-marker-hidden {
+	color: transparent;
+}
+
+/* overflow: hidden の inline-block は下端がベースラインに揃い、行が高くなるので、上端に揃える */
+.markdown-source-view.mod-cm6 .nbi-quote-space {
+	display: inline-block;
+	width: 0;
+	overflow: hidden;
+	vertical-align: top;
 }
 
 .markdown-source-view.mod-cm6 .cm-line.nbi-quote::after {

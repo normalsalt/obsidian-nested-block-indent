@@ -12,17 +12,10 @@ const remeasured = StateEffect.define<null>();
 const hidden = Decoration.replace({});
 const plainLine = Decoration.line({ class: 'nbi-plain' });
 
-// `- > ...` の `>` の代わりに置く、縦線と本文の間の余白
-class QuoteSpacer extends WidgetType {
-	eq() {
-		return true;
-	}
-	toDOM() {
-		return createSpan({ cls: 'nbi-quote-spacer' });
-	}
-}
-const quoteSpacer = Decoration.replace({ widget: new QuoteSpacer() });
+// 引用の `>` は、通常の引用と同じく縦線と本文の間に置いたままにし、カーソルがない行では見えなくする
 const quoteMarker = Decoration.mark({ class: 'nbi-quote-marker' });
+const quoteMarkerHidden = Decoration.mark({ class: 'nbi-quote-marker nbi-quote-marker-hidden' });
+const quoteSpace = Decoration.mark({ class: 'nbi-quote-space' });
 const fenceText = Decoration.mark({ class: 'nbi-fence-text' });
 
 const LINE_CLASS: Record<Exclude<Target['kind'], 'plain'>, string> = {
@@ -94,7 +87,14 @@ class NestedBlockIndentView {
 		const modeChanged = isLivePreview(update.startState) !== isLivePreview(update.state);
 		const measured = update.transactions.some((tr) => tr.effects.some((e) => e.is(remeasured)));
 		if (update.docChanged) this.result = this.scan();
-		if (update.docChanged || update.viewportChanged || update.selectionSet || modeChanged || measured) {
+		if (
+			update.docChanged ||
+			update.viewportChanged ||
+			update.selectionSet ||
+			update.focusChanged ||
+			modeChanged ||
+			measured
+		) {
 			this.build();
 		}
 		// 測った値が変わったら、落ち着くまでもう一度測る。Tab で項目を移したときなど、Obsidian が
@@ -184,9 +184,9 @@ class NestedBlockIndentView {
 		const { doc, selection } = view.state;
 		const { from, to } = view.viewport;
 
-		// カーソルや選択がかかっている行では `>` を出す
+		// カーソルや選択がかかっている行では `>` を出す（Obsidian と同じく、エディターにフォーカスがあるときだけ）
 		const activeLines = new Set<number>();
-		for (const r of selection.ranges) {
+		for (const r of view.hasFocus ? selection.ranges : []) {
 			const last = doc.lineAt(r.to).number;
 			for (let n = doc.lineAt(r.from).number; n <= last; n++) activeLines.add(n);
 		}
@@ -225,15 +225,13 @@ class NestedBlockIndentView {
 				decos.push(r);
 				atomic.push(r);
 			}
+			// `>` に縦線と本文の間の幅と色を付け、続く空白の幅はなくす。Obsidian は `>` と空白を別の要素に
+			// するので、1文字ずつ装飾する（2文字にまたがる装飾は分かれて、幅が2つ分になる）
 			if (t.marker > 0) {
 				const markerFrom = line.from + t.markerFrom;
-				const markerTo = markerFrom + t.marker;
-				if (!activeLines.has(t.line)) {
-					decos.push((t.kind === 'quote-item' ? quoteSpacer : hidden).range(markerFrom, markerTo));
-				} else if (t.kind === 'quote-item') {
-					// `>` を出すときは、縦線に重ならないよう前に余白を空ける
-					decos.push(quoteMarker.range(markerFrom, markerTo));
-				}
+				const deco = activeLines.has(t.line) ? quoteMarker : quoteMarkerHidden;
+				decos.push(deco.range(markerFrom, markerFrom + 1));
+				if (t.marker > 1) decos.push(quoteSpace.range(markerFrom + 1, markerFrom + t.marker));
 			}
 		}
 		this.decorations = Decoration.set(decos, true);
@@ -267,7 +265,7 @@ class NestedBlockIndentView {
 						return Math.round((el.getBoundingClientRect().left - left + margin + 1) * 10) / 10;
 					});
 					// 項目の行では、Obsidian がぶら下げインデントの padding に本文の開始位置を入れている。
-					// ただし `- > ...` の行（カーソルを置いて出る `>` まで含めて測られる）と、本文がまだない行
+					// ただし `- > ...` の行（`>` の幅まで含めて測られる）と、本文がまだない行
 					// （記号の右の余白が含まれない）の padding は本文の開始位置と合わないので使わない
 					const rest = line.text.slice(item.prefix.length);
 					const padding = parseFloat(lineEl.style.paddingInlineStart);
@@ -276,7 +274,7 @@ class NestedBlockIndentView {
 						exact.add(item.prefix);
 						continue;
 					}
-					// padding がない行（`- ```js` など）と、使えない行は座標から測る。カーソルを置いて出る ``` や `>` は
+					// padding がない行（`- ```js` など）と、使えない行は座標から測る。カーソルを置いて出る ``` は
 					// 前に余白を空けているので、記号の側（side: -1）の、記号の直後の位置を使う。
 					// 記号の要素の右の余白（`.cm-formatting-list` の margin-inline-end）は本文の前の空きなので足す
 					if (found.has(item.prefix)) continue;
