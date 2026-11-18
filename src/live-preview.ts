@@ -2,7 +2,7 @@ import type { EditorState, Range } from '@codemirror/state';
 import { StateEffect } from '@codemirror/state';
 import type { DecorationSet, ViewUpdate } from '@codemirror/view';
 import { Decoration, EditorView, ViewPlugin, WidgetType } from '@codemirror/view';
-import { editorLivePreviewField } from 'obsidian';
+import { editorLivePreviewField, Notice } from 'obsidian';
 import type { ScanResult, Target } from './scan';
 import { scan } from './scan';
 
@@ -84,6 +84,10 @@ class NestedBlockIndentView {
 		this.result = this.scan();
 		this.build();
 		this.measure();
+		// コピーボタンは Obsidian がボタン自体で click を受けるので、その前に capture で受ける
+		view.contentDOM.addEventListener('click', this.onCopyClick, true);
+		// 貼り付けも、HTML があると Obsidian が自分で処理するので、その前に capture で受ける
+		view.dom.addEventListener('paste', this.onPaste, true);
 	}
 
 	update(update: ViewUpdate) {
@@ -110,6 +114,60 @@ class NestedBlockIndentView {
 
 	destroy() {
 		this.destroyed = true;
+		this.view.contentDOM.removeEventListener('click', this.onCopyClick, true);
+		this.view.dom.removeEventListener('paste', this.onPaste, true);
+	}
+
+	// 箇条書きの中のコードブロックと引用に複数行を貼り付けたら、2行目以降の頭に字下げ（引用は `> ` も）を足す。
+	// 足さないと、2行目以降が親の項目より浅くなり、コードブロックや引用と箇条書きから外れて表示される
+	private readonly onPaste = (evt: ClipboardEvent) => {
+		const { view } = this;
+		const text = evt.clipboardData?.getData('text/plain') ?? '';
+		if (evt.defaultPrevented || !isLivePreview(view.state) || !/[\r\n]/.test(text)) return;
+		const { doc, selection } = view.state;
+		const n = doc.lineAt(selection.main.from).number;
+		const target = this.result.targets.find((t) => t.line === n);
+		const indent = target?.indent;
+		if (!indent) return;
+		// 空の行は、コードブロックではそのまま、引用では `>` だけにする（空の行で引用が終わらないように）
+		const blank = target.kind === 'quote' || target.kind === 'quote-item' ? indent.trimEnd() : '';
+		const [first = '', ...rest] = text.split(/\r\n?|\n/);
+		// 文書の中からコピーした行など、すでに字下げが付いていれば、Obsidian に任せる
+		if (rest.every((l) => l === '' || l.startsWith(indent))) return;
+		const indented = [first, ...rest.map((l) => (l === '' ? blank : indent + l))].join('\n');
+		evt.preventDefault();
+		evt.stopPropagation();
+		view.dispatch(view.state.replaceSelection(indented), { userEvent: 'input.paste', scrollIntoView: true });
+	};
+
+	// 箇条書きの中のコードブロックのコピーボタン（`.code-block-flair`）では、
+	// Obsidian の代わりに、隠している行頭の空白を除いた中身をコピーする
+	private readonly onCopyClick = (evt: MouseEvent) => {
+		const target = evt.target as Node | null;
+		if (!target?.instanceOf(Element) || !isLivePreview(this.view.state)) return;
+		const flair = target.closest('.code-block-flair');
+		if (!flair) return;
+		const code = this.codeAt(this.view.posAtDOM(flair));
+		if (code === null) return;
+		evt.stopPropagation();
+		void navigator.clipboard.writeText(code).then(() => new Notice('Copied to clipboard'));
+	};
+
+	/** pos の行で始まる、箇条書きの中のコードブロックの中身（フェンスの行は含めない） */
+	private codeAt(pos: number): string | null {
+		const { doc } = this.view.state;
+		const { targets } = this.result;
+		const n = doc.lineAt(pos).number;
+		const i = targets.findIndex((t) => t.line === n);
+		const start = targets[i];
+		if (!start?.first || (start.kind !== 'code' && start.kind !== 'code-item')) return null;
+		const lines: string[] = [];
+		for (const t of targets.slice(i + 1)) {
+			if (t.kind !== 'code' || t.first || t.closing || t.line > doc.lines) break;
+			lines.push(doc.line(t.line).text.slice(t.hide));
+			if (t.last) break;
+		}
+		return lines.join('\n');
 	}
 
 	private scan(): ScanResult {

@@ -14,7 +14,12 @@ In Live Preview, Obsidian draws a code block or a quote inside a list from the l
 	  > or on the lines below it
 ````
 
-Reading view and Source mode are not changed. The plugin only changes how lines are drawn. It never modifies your notes, and the text you select or copy is the same as in the file.
+Reading view and Source mode are not changed. The plugin only changes how lines are drawn. It doesn't modify your notes, and the text you select or copy is the same as in the file.
+
+Code blocks and quotes inside a list also get two small helpers:
+
+- The copy button of a code block copies the code without the indentation of the list, like in Reading view.
+- When you paste several lines into a code block or a quote, the indentation of the list (and `> ` for a quote) is added to the second and following lines, so they stay in the block.
 
 ## Requirements
 

@@ -22,6 +22,11 @@ export interface Target {
 	first?: boolean;
 	/** かたまりの最後の行か（下に余白を空ける） */
 	last?: boolean;
+	/** コードブロックの閉じるフェンスの行か */
+	closing?: boolean;
+	/** コードブロックと引用の行で、続きの行の頭に置く文字列（複数行を貼り付けたとき、2行目以降に足す）。
+	 * コードブロックは字下げの空白、引用はそれに `> ` を付けたもの */
+	indent?: string;
 }
 
 export interface Item {
@@ -47,6 +52,8 @@ interface Fence {
 	parent: ListItem | null;
 	/** 中の行で隠す空白の桁数（フェンスの行のインデント） */
 	hideCols: number;
+	/** 中の行の頭に置く空白 */
+	indent: string;
 }
 
 const ITEM_RE = /^([ \t]*)([-*+]|\d{1,9}[.)])([ \t]+|$)/;
@@ -128,9 +135,11 @@ export function scan(lines: readonly string[], tabSize: number): ScanResult {
 					kind: 'code',
 					parent: parent.prefix,
 					hide: charsForColumns(text, fence.hideCols, tabSize),
+					indent: fence.indent,
 					markerFrom: 0,
 					marker: 0,
 					last: closing,
+					closing,
 				});
 				if (closing) fence = null;
 				continue;
@@ -153,17 +162,30 @@ export function scan(lines: readonly string[], tabSize: number): ScanResult {
 
 			const rest = text.slice(prefix.length);
 			const f = FENCE_RE.exec(rest)?.[1];
+			// 続きの行は、記号の幅の分だけ空白で字下げする（例 `\t- ```js` なら `\t  `）
+			const indent = (m[1] ?? '') + ' '.repeat(item.contentCol - item.indentCol);
 			if (f) {
-				fence = { char: f.charAt(0), len: f.length, parent: item, hideCols: item.contentCol };
-				targets.push({ line, kind: 'code-item', parent: prefix, hide: 0, markerFrom: 0, marker: 0, first: true });
+				fence = { char: f.charAt(0), len: f.length, parent: item, hideCols: item.contentCol, indent };
+				targets.push({
+					line,
+					kind: 'code-item',
+					parent: prefix,
+					hide: 0,
+					markerFrom: 0,
+					marker: 0,
+					first: true,
+					indent,
+				});
 			} else if (rest.startsWith('>')) {
+				const quote = quoteMarker(text, prefix.length);
 				targets.push({
 					line,
 					kind: 'quote-item',
 					parent: prefix,
 					hide: 0,
 					markerFrom: prefix.length,
-					marker: quoteMarker(text, prefix.length),
+					marker: quote,
+					indent: indent + rest.slice(0, quote),
 				});
 			} else {
 				targets.push({ line, kind: 'plain', parent: prefix, hide: 0, markerFrom: 0, marker: 0 });
@@ -178,21 +200,32 @@ export function scan(lines: readonly string[], tabSize: number): ScanResult {
 		const parent = stack[stack.length - 1];
 		const f = FENCE_RE.exec(body)?.[1];
 		if (!parent) {
-			if (f) fence = { char: f.charAt(0), len: f.length, parent: null, hideCols: 0 };
+			if (f) fence = { char: f.charAt(0), len: f.length, parent: null, hideCols: 0, indent: '' };
 			continue;
 		}
 
 		if (f) {
-			fence = { char: f.charAt(0), len: f.length, parent, hideCols: cols };
-			targets.push({ line, kind: 'code', parent: parent.prefix, hide: space.length, markerFrom: 0, marker: 0, first: true });
+			fence = { char: f.charAt(0), len: f.length, parent, hideCols: cols, indent: space };
+			targets.push({
+				line,
+				kind: 'code',
+				parent: parent.prefix,
+				hide: space.length,
+				markerFrom: 0,
+				marker: 0,
+				first: true,
+				indent: space,
+			});
 		} else if (body.startsWith('>')) {
+			const quote = quoteMarker(text, space.length);
 			targets.push({
 				line,
 				kind: 'quote',
 				parent: parent.prefix,
 				hide: space.length,
 				markerFrom: space.length,
-				marker: quoteMarker(text, space.length),
+				marker: quote,
+				indent: space + body.slice(0, quote),
 			});
 		} else {
 			targets.push({ line, kind: 'plain', parent: parent.prefix, hide: 0, markerFrom: 0, marker: 0 });
