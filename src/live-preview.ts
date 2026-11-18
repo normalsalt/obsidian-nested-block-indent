@@ -4,7 +4,7 @@ import type { DecorationSet, ViewUpdate } from '@codemirror/view';
 import { Decoration, EditorView, ViewPlugin, WidgetType } from '@codemirror/view';
 import { editorLivePreviewField, Notice } from 'obsidian';
 import type { ScanResult, Target } from './scan';
-import { scan } from './scan';
+import { activeIndent, indentStarts, scan } from './scan';
 
 // 親の本文の開始位置を測り直したことを知らせる
 const remeasured = StateEffect.define<null>();
@@ -34,16 +34,23 @@ interface Layout {
 
 // 行頭の空白を隠すと Obsidian のインデントの縦線も消えるので、親の行と同じ位置に描く。
 // Obsidian の `.cm-indent::before` と同じく枠線で描く（グラデーションだと端数の位置で薄い線がにじんで消える）
+// active は、Obsidian が .cm-active-indent で明るく描くのと同じ縦線の番号（なければ -1）
 class Guides extends WidgetType {
-	constructor(private readonly guides: readonly number[]) {
+	constructor(
+		private readonly guides: readonly number[],
+		private readonly active: number,
+	) {
 		super();
 	}
 	eq(other: Guides) {
-		return other.guides.join() === this.guides.join();
+		return other.guides.join() === this.guides.join() && other.active === this.active;
 	}
 	toDOM() {
 		const el = createSpan({ cls: 'nbi-guides', attr: { 'aria-hidden': 'true' } });
-		for (const x of this.guides) el.createSpan({ cls: 'nbi-guide', attr: { style: `inset-inline-start: ${x}px` } });
+		this.guides.forEach((x, i) => {
+			const cls = i === this.active ? 'nbi-guide nbi-guide-active' : 'nbi-guide';
+			el.createSpan({ cls, attr: { style: `inset-inline-start: ${x}px` } });
+		});
 		return el;
 	}
 }
@@ -191,6 +198,9 @@ class NestedBlockIndentView {
 			for (let n = doc.lineAt(r.from).number; n <= last; n++) activeLines.add(n);
 		}
 
+		// Obsidian が明るく描く縦線の範囲と位置。自前で描く縦線も同じものを明るくする
+		const active = activeIndent((n) => doc.line(n).text, doc.lines, doc.lineAt(selection.main.from).number);
+
 		const decos: Range<Decoration>[] = [];
 		const atomic: Range<Decoration>[] = [];
 		for (const t of this.result.targets) {
@@ -214,7 +224,9 @@ class NestedBlockIndentView {
 			// （Obsidian の縦線がコードの小さい文字に合わせてずれる）には、インデントの縦線を行頭に置く。
 			// 閉じるフェンスの行は Obsidian が中身ごと置き換えるので、隠す範囲とは別の、行頭の位置に置く
 			if (layout.guides.length && (t.hide > 0 || t.kind === 'code' || t.kind === 'code-item')) {
-				decos.push(Decoration.widget({ widget: new Guides(layout.guides), side: -1 }).range(line.from));
+				const index =
+					active.from < t.line && t.line < active.to ? indentStarts(line.text).indexOf(active.offset) : -1;
+				decos.push(Decoration.widget({ widget: new Guides(layout.guides, index), side: -1 }).range(line.from));
 			}
 			// `- ```js` の行は、記号の後ろのフェンスを背景の内側から始める
 			if (t.kind === 'code-item' && line.from + t.parent.length < line.to) {

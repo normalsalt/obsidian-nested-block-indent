@@ -32,6 +32,11 @@
 	pointer-events: none;
 }
 
+/* カーソルのある項目の縦線（Obsidian の .cm-active-indent と同じ） */
+.markdown-source-view.mod-cm6 .nbi-guide-active {
+	border-inline-end: var(--indentation-guide-width-active) solid var(--indentation-guide-color-active);
+}
+
 /* コードブロック: 背景の左端を親の本文に揃え、文字は通常の余白の分だけ内側から始める */
 .markdown-source-view.mod-cm6 .cm-line.nbi-code {
 	background: none !important;

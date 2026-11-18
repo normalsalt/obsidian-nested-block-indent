@@ -248,3 +248,83 @@ function markQuoteRuns(targets: Target[]) {
 		t.last = !(isQuote(next) && next?.kind === 'quote' && next.line === t.line + 1);
 	});
 }
+
+const ACTIVE_RE = /^([>\s]*)(([*+-] |(\d+)([.)] ))(?:\[(.)\] )?)?/;
+
+export interface ActiveIndent {
+	/** from < 行番号 < to の行で、縦線を明るくする */
+	from: number;
+	to: number;
+	/** 明るくする縦線の、行頭からの文字の位置 */
+	offset: number;
+}
+
+/**
+ * カーソルのある行から、明るくするインデントの縦線を決める（Obsidian の .cm-active-indent の決め方をなぞる）。
+ * カーソルの行が項目の行でなければ、それを含む項目の行までさかのぼり、その字下げの続く行の範囲を求める
+ */
+export function activeIndent(line: (n: number) => string, lines: number, cursor: number): ActiveIndent {
+	let from = cursor;
+	let indent = '';
+	let marker = '';
+	const s = ACTIVE_RE.exec(line(cursor));
+	if (s?.[0]) {
+		indent = s[1] ?? '';
+		if (s[2]) {
+			marker = ' '.repeat(s[2].length);
+		} else {
+			for (let c = cursor - 1; c > 0; c--) {
+				const h = ACTIVE_RE.exec(line(c));
+				if (!h?.[0]) break;
+				if (!h[2] && h[1] === indent) continue;
+				const u = h[1] ?? '';
+				if (h[2] && indent.startsWith(u) && h[0].length <= indent.length) {
+					from = c;
+					indent = u;
+					marker = ' '.repeat(h[2].length);
+				}
+				break;
+			}
+		}
+	}
+	let to = from + 1;
+	for (; to <= lines; to++) {
+		let rest = line(to);
+		if (!rest.startsWith(indent)) break;
+		rest = rest.slice(indent.length);
+		if (marker) {
+			if (rest.startsWith(marker)) continue;
+			marker = '';
+		}
+		if (!/^(\t| {4})/.test(rest)) break;
+	}
+	return { from, to, offset: indent.length };
+}
+
+/** 行頭の字下げのうち、Obsidian がインデントの縦線を描く段（タブ1つか空白4つ）の、開始位置の文字数 */
+export function indentStarts(text: string): number[] {
+	const head = /^[\s>]+/.exec(text)?.[0] ?? '';
+	const starts: number[] = [];
+	let p = 0;
+	while (p < head.length) {
+		const ch = head.charAt(p);
+		if (ch === '>') {
+			p++;
+			if (head.charAt(p) === ' ') p++;
+		} else if (ch === '\t') {
+			starts.push(p);
+			p++;
+		} else {
+			// 空白が4つ続かなければ縦線は描かれず、続く1文字（タブなど）も飛ばされる
+			let e = p;
+			while (e < p + 4 && head.charAt(e) === ' ') e++;
+			if (e < p + 4) {
+				p = e + 1;
+				continue;
+			}
+			starts.push(p);
+			p += 4;
+		}
+	}
+	return starts;
+}
