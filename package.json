@@ -1,6 +1,6 @@
 {
 	"name": "nested-block-indent",
-	"version": "0.1.0",
+	"version": "0.2.0",
 	"description": "Indent code blocks and quotes inside lists in Live Preview to match their list item.",
 	"main": "main.js",
 	"type": "module",
