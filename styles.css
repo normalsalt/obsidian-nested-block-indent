@@ -1,0 +1,136 @@
+/* Nested Block Indent: Live Preview の箇条書きの中のコードブロックと引用 */
+/* --nbi-indent は、親の項目の本文の開始位置（行の左端からの px）。src/live-preview.ts が付ける */
+
+/* コードブロックと引用のかたまりの、前後の行との間の余白 */
+.markdown-source-view.mod-cm6 {
+	--nbi-gap: var(--size-4-2);
+}
+
+.markdown-source-view.mod-cm6 .cm-line.nbi-first {
+	padding-block-start: var(--nbi-gap) !important;
+}
+
+.markdown-source-view.mod-cm6 .cm-line.nbi-last {
+	padding-block-end: var(--nbi-gap) !important;
+}
+
+/* 背景と縦線は余白の内側に描く（親のインデントの縦線は余白にも描いて、つなげる） */
+.markdown-source-view.mod-cm6 .cm-line.nbi-first::after {
+	inset-block-start: var(--nbi-gap) !important;
+}
+
+.markdown-source-view.mod-cm6 .cm-line.nbi-last::after {
+	inset-block-end: var(--nbi-gap) !important;
+}
+
+/* 隠した行頭の空白の代わりに置く、インデントの縦線（Obsidian の .cm-indent::before と同じ描き方） */
+.markdown-source-view.mod-cm6 .nbi-guide {
+	position: absolute;
+	inset-block: 0;
+	width: 0;
+	border-inline-end: var(--indentation-guide-width) solid var(--indentation-guide-color);
+	pointer-events: none;
+}
+
+/* コードブロック: 背景の左端を親の本文に揃え、文字は通常の余白の分だけ内側から始める */
+.markdown-source-view.mod-cm6 .cm-line.nbi-code {
+	background: none !important;
+	border-color: transparent !important;
+}
+
+.markdown-source-view.mod-cm6 .cm-line.nbi-code:not(.nbi-code-item) {
+	text-indent: 0 !important;
+	padding-inline-start: calc(var(--nbi-indent) + var(--size-4-4)) !important;
+}
+
+.markdown-source-view.mod-cm6 .cm-line.nbi-code::after {
+	content: '';
+	position: absolute;
+	inset-block: 0;
+	inset-inline-start: var(--nbi-indent);
+	inset-inline-end: 0;
+	z-index: -1;
+	background-color: var(--code-background);
+	pointer-events: none;
+}
+
+.markdown-source-view.mod-cm6 .cm-line.nbi-code.nbi-first::after {
+	border-start-start-radius: var(--code-radius);
+	border-start-end-radius: var(--code-radius);
+}
+
+.markdown-source-view.mod-cm6 .cm-line.nbi-code.nbi-last::after {
+	border-end-start-radius: var(--code-radius);
+	border-end-end-radius: var(--code-radius);
+}
+
+/* `- ```js` の行は、記号までを普通の項目と同じ文字にして、記号の後ろを本文の開始位置に揃える */
+/* （コードの小さい文字のままだと、記号までの幅が狭くなり、フェンスが背景の左にはみ出す） */
+.markdown-source-view.mod-cm6 .cm-line.nbi-code-item {
+	font-family: inherit;
+	font-size: inherit;
+}
+
+.markdown-source-view.mod-cm6 .nbi-fence-text {
+	padding-inline-start: var(--size-4-4);
+	font-family: var(--font-monospace);
+	font-size: var(--code-size);
+}
+
+/* 上の余白の分だけ、言語名とコピーボタンを下げる */
+.markdown-source-view.mod-cm6 .cm-line.nbi-code.nbi-first .code-block-flair {
+	top: calc(6px + var(--nbi-gap));
+}
+
+/* `- ```js` の行の Obsidian の縦線は、コードの小さい文字に合わせてずれるので消す（.nbi-guide で描く） */
+.markdown-source-view.mod-cm6 .cm-line.nbi-code-item .cm-indent::before {
+	content: none;
+}
+
+/* 引用: 左の縦線を親の本文に揃える */
+.markdown-source-view.mod-cm6 .cm-line.nbi-quote {
+	font-style: var(--blockquote-style);
+	color: var(--blockquote-color);
+	background: none !important;
+}
+
+.markdown-source-view.mod-cm6 .cm-line.nbi-quote:not(.nbi-quote-item) {
+	text-indent: 0 !important;
+	padding-inline-start: calc(var(--nbi-indent) + var(--size-4-3)) !important;
+}
+
+/* `- > ...` は、折り返した行も縦線の右から始める */
+.markdown-source-view.mod-cm6 .cm-line.nbi-quote-item {
+	padding-inline-start: calc(var(--nbi-indent) + var(--size-4-3)) !important;
+	text-indent: calc(-1 * (var(--nbi-indent) + var(--size-4-3))) !important;
+}
+
+.markdown-source-view.mod-cm6 .nbi-quote-marker {
+	padding-inline-start: var(--size-4-3);
+}
+
+.markdown-source-view.mod-cm6 .nbi-quote-spacer {
+	display: inline-block;
+	width: var(--size-4-3);
+}
+
+.markdown-source-view.mod-cm6 .cm-line.nbi-quote::after {
+	content: '';
+	position: absolute;
+	inset-block: 0;
+	inset-inline-start: var(--nbi-indent);
+	border-inline-start: var(--blockquote-border-thickness) solid var(--blockquote-border-color);
+	pointer-events: none;
+}
+
+/* Obsidian の縦線は消す。引用でない行に遅延継続で付いた引用の見た目も消す */
+.markdown-source-view.mod-cm6 .cm-line.nbi-quote.HyperMD-quote::before,
+.markdown-source-view.mod-cm6 .cm-line.nbi-plain.HyperMD-quote::before {
+	display: none;
+}
+
+.markdown-source-view.mod-cm6 .cm-line.nbi-plain.HyperMD-quote {
+	font-style: normal;
+	color: var(--text-normal);
+	background-color: transparent;
+}
