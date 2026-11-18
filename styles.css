@@ -98,6 +98,13 @@
 	content: none;
 }
 
+/* コードの折りたたみの印は、通常のコードブロックと同じく文字との間を空ける */
+/* （Obsidian は箇条書きの行で、記号の横に出すためにこの余白を変える。コードの行にもその行のクラスが付く） */
+.markdown-source-view.mod-cm6 .cm-line.nbi-code:not(.nbi-code-item) .cm-fold-indicator .collapse-indicator {
+	padding-inline-end: 5px !important;
+	inset-inline-end: 0 !important;
+}
+
 /* 引用: 左の縦線を親の本文に揃える */
 .markdown-source-view.mod-cm6 .cm-line.nbi-quote {
 	font-style: var(--blockquote-style);

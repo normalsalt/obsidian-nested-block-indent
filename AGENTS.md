@@ -105,6 +105,7 @@ Live Preview で、箇条書きの中のコードブロックと引用を、親�
 - 言語名とコピーボタン（`.code-block-flair`）は、行の上端から `top: 6px`。上に余白を足した行では、その分だけ下げる
 - カーソルを置いたときに書式の記号が出るのは、エディターにフォーカスがあるときだけ。CLI で確かめるときは `window.focus()` で Obsidian の窓を前に出す（`document.hasFocus()` で確かめる）
 - 閉じるフェンスの行は、Obsidian が行の中身全体をウィジェットに置き換える。隠す範囲を置き換えるウィジェットは出ないので、縦線は行頭の位置（`side: -1`）に置く
+- 折りたたみの印（`.cm-fold-indicator .collapse-indicator`）は、通常は文字との間に `padding-inline-end: 5px` を空ける。箇条書きの行（`HyperMD-list-line`）では記号の横に出すためにこの余白を変え、箇条書きの中のコードの行にもこのクラスが付くので、印が文字に接する。コードの行では 5px に戻す
 - 箇条書きの中のコードの行では、親の分より深い行頭の空白も `.cm-indent`（`min-width: var(--list-indent)` と縦線）になり、空白2つが広く見える。コードの行では普通の空白に戻す
 - コピーボタン（`.code-block-flair`）は、ボタン自体の `click` で、フェンスの間の文字列をそのまま `navigator.clipboard.writeText` する
 - 貼り付けは、クリップボードに HTML があると Obsidian が自分で処理し、CodeMirror の `clipboardInputFilter` を通らない。`view.dom` の `paste` を capture で受ける
